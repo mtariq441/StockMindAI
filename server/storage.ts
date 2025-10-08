@@ -307,6 +307,7 @@ export class MemStorage implements IStorage {
         productId: id,
         alertType: product.quantity === 0 ? "out_of_stock" : "low_stock",
         message: `${product.name} is ${product.quantity === 0 ? "out of stock" : "running low"}. Current stock: ${product.quantity}`,
+        resolved: false,
       });
     }
 
@@ -324,6 +325,7 @@ export class MemStorage implements IStorage {
         productId: id,
         alertType: updatedProduct.quantity === 0 ? "out_of_stock" : "low_stock",
         message: `${updatedProduct.name} is ${updatedProduct.quantity === 0 ? "out of stock" : "running low"}. Current stock: ${updatedProduct.quantity}`,
+        resolved: false,
       });
     }
 

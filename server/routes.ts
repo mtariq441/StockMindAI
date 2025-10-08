@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { generateAIResponse } from "./ai-service";
 import {
   loginSchema,
   registerSchema,
@@ -33,63 +34,6 @@ function authenticateToken(req: any, res: any, next: any) {
     req.user = user;
     next();
   });
-}
-
-// Helper to generate AI response (will be enhanced with OpenAI later)
-async function generateAIResponse(question: string): Promise<string> {
-  const lowerQuestion = question.toLowerCase();
-  
-  // Get data for analysis
-  const products = await storage.getAllProducts();
-  const sales = await storage.getAllSales();
-  const lowStockProducts = await storage.getLowStockProducts();
-  const alerts = await storage.getActiveStockAlerts();
-
-  // Simple rule-based responses (to be replaced with OpenAI)
-  if (lowerQuestion.includes("low stock") || lowerQuestion.includes("restock")) {
-    if (lowStockProducts.length === 0) {
-      return "All products are well-stocked. No restocking needed at this time.";
-    }
-    const productNames = lowStockProducts.map(p => `${p.name} (${p.quantity} units)`).join(", ");
-    return `You have ${lowStockProducts.length} product(s) that need restocking: ${productNames}. Consider reordering soon to avoid stockouts.`;
-  }
-
-  if (lowerQuestion.includes("total sales") || lowerQuestion.includes("revenue")) {
-    const totalRevenue = sales.reduce((sum, sale) => sum + sale.totalPrice, 0);
-    return `Total sales revenue: $${totalRevenue.toFixed(2)} from ${sales.length} transactions.`;
-  }
-
-  if (lowerQuestion.includes("top product") || lowerQuestion.includes("best seller")) {
-    const productSales = new Map<string, { count: number; revenue: number; name: string }>();
-    
-    for (const sale of sales) {
-      const product = await storage.getProduct(sale.productId);
-      if (product) {
-        const existing = productSales.get(sale.productId) || { count: 0, revenue: 0, name: product.name };
-        productSales.set(sale.productId, {
-          count: existing.count + sale.quantity,
-          revenue: existing.revenue + sale.totalPrice,
-          name: product.name,
-        });
-      }
-    }
-
-    if (productSales.size === 0) {
-      return "No sales data available yet.";
-    }
-
-    const topProduct = Array.from(productSales.values()).sort((a, b) => b.revenue - a.revenue)[0];
-    return `Your top product is "${topProduct.name}" with ${topProduct.count} units sold and $${topProduct.revenue.toFixed(2)} in revenue.`;
-  }
-
-  if (lowerQuestion.includes("alert") || lowerQuestion.includes("warning")) {
-    if (alerts.length === 0) {
-      return "No active alerts. Your inventory is in good shape!";
-    }
-    return `You have ${alerts.length} active alert(s). Check your stock alerts for details on products that need attention.`;
-  }
-
-  return `I can help you analyze your inventory data. Try asking about: low stock products, total sales, top products, or current alerts.`;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
