@@ -118,62 +118,63 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 222 14% 8%;
+  /* Premium Dark Theme - Deep Navy/Black with Purple Accents */
+  --background: 230 25% 6%;
   --foreground: 210 20% 98%;
-  --border: 217 10% 20%;
+  --border: 230 20% 15%;
 
-  --card: 222 14% 12%;
+  --card: 230 22% 9%;
   --card-foreground: 210 20% 98%;
-  --card-border: 217 12% 18%;
+  --card-border: 230 18% 14%;
 
-  --sidebar: 222 14% 10%;
+  --sidebar: 230 24% 8%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-border: 217 12% 15%;
+  --sidebar-border: 230 20% 12%;
 
-  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary: 262 83% 65%;
   --sidebar-primary-foreground: 210 20% 98%;
 
-  --sidebar-accent: 222 16% 16%;
+  --sidebar-accent: 230 20% 14%;
   --sidebar-accent-foreground: 210 20% 98%;
 
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-ring: 262 83% 65%;
 
-  --popover: 222 14% 14%;
+  --popover: 230 22% 10%;
   --popover-foreground: 210 20% 98%;
-  --popover-border: 217 12% 20%;
+  --popover-border: 230 18% 16%;
 
-  --primary: 217 91% 60%;
+  --primary: 262 83% 65%;
   --primary-foreground: 210 20% 98%;
 
-  --secondary: 222 14% 18%;
+  --secondary: 230 20% 16%;
   --secondary-foreground: 210 20% 98%;
 
-  --muted: 222 14% 15%;
-  --muted-foreground: 215 16% 65%;
+  --muted: 230 20% 14%;
+  --muted-foreground: 215 16% 70%;
 
-  --accent: 222 15% 16%;
+  --accent: 230 20% 15%;
   --accent-foreground: 210 20% 98%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
 
-  --input: 217 15% 30%;
-  --ring: 217 91% 60%;
+  --input: 230 18% 20%;
+  --ring: 262 83% 65%;
 
-  --chart-1: 217 91% 70%;
-  --chart-2: 142 71% 55%;
-  --chart-3: 38 92% 60%;
-  --chart-4: 280 65% 70%;
-  --chart-5: 340 75% 65%;
+  --chart-1: 262 83% 65%;
+  --chart-2: 280 70% 60%;
+  --chart-3: 250 75% 65%;
+  --chart-4: 240 80% 60%;
+  --chart-5: 270 75% 60%;
 
-  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.30);
-  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.35);
-  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.40), 0px 1px 2px -1px hsl(0 0% 0% / 0.40);
-  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.40), 0px 1px 2px -1px hsl(0 0% 0% / 0.40);
-  --shadow-md: 0px 4px 6px -1px hsl(0 0% 0% / 0.40), 0px 2px 4px -1px hsl(0 0% 0% / 0.40);
-  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.40), 0px 4px 6px -2px hsl(0 0% 0% / 0.35);
-  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.40), 0px 10px 10px -5px hsl(0 0% 0% / 0.30);
-  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.50);
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.40);
+  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.50), 0px 1px 2px -1px hsl(0 0% 0% / 0.50);
+  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.50), 0px 1px 2px -1px hsl(0 0% 0% / 0.50);
+  --shadow-md: 0px 4px 6px -1px hsl(0 0% 0% / 0.50), 0px 2px 4px -1px hsl(0 0% 0% / 0.50);
+  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.50), 0px 4px 6px -2px hsl(0 0% 0% / 0.45);
+  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.50), 0px 10px 10px -5px hsl(0 0% 0% / 0.40);
+  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.60);
 
   /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
