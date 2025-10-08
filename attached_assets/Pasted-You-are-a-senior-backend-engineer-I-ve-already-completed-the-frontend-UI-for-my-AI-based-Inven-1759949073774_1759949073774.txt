@@ -1,0 +1,124 @@
+You are a senior backend engineer.
+
+I’ve already completed the frontend UI for my **AI-based Inventory Management System** in Replit.  
+Now build a **backend folder** using **Node.js + Express + MySQL + OpenAI API** so the entire web app becomes 100% functional.
+
+Every button, form, and feature from the frontend should work via real API routes.
+
+✅ TECH STACK:
+- Node.js (latest)
+- Express.js
+- MySQL (with Sequelize ORM)
+- JWT for authentication
+- bcrypt for password hashing
+- dotenv for environment variables
+- multer for file upload (product images)
+- cors for frontend-backend communication
+- OpenAI API (for AI-based business intelligence)
+
+✅ FOLDER STRUCTURE:
+/backend
+ ├── server.js
+ ├── package.json
+ ├── .env
+ ├── config/
+ │    ├── db.js
+ ├── models/
+ │    ├── User.js
+ │    ├── Product.js
+ │    ├── Sale.js
+ │    ├── Purchase.js
+ │    ├── Supplier.js
+ │    ├── StockAlert.js
+ ├── controllers/
+ │    ├── authController.js
+ │    ├── productController.js
+ │    ├── salesController.js
+ │    ├── purchaseController.js
+ │    ├── aiController.js
+ │    └── settingsController.js
+ ├── routes/
+ │    ├── authRoutes.js
+ │    ├── productRoutes.js
+ │    ├── salesRoutes.js
+ │    ├── purchaseRoutes.js
+ │    ├── aiRoutes.js
+ │    ├── settingsRoutes.js
+ ├── middleware/
+ │    ├── authMiddleware.js
+ │    └── errorMiddleware.js
+ ├── utils/
+ │    ├── sendEmail.js
+ │    ├── aiAnalyzer.js
+ │    └── helpers.js
+
+✅ DATABASE SETUP:
+- Use Sequelize ORM with MySQL.
+- Tables: users, products, sales, purchases, suppliers, stock_alerts.
+- Relationships:
+  - User (1) — (many) Sales / Purchases
+  - Product (1) — (many) Sales / Purchases
+  - Supplier (1) — (many) Products
+- Auto-sync tables with Sequelize.
+- Include seed data for testing.
+
+✅ FEATURES TO BUILD:
+1. **User Authentication**
+   - Register, Login, Logout
+   - JWT-based token authentication
+   - Role system: Admin, Staff, Viewer
+   - Password hashing with bcrypt
+   - Forgot/reset password via email (optional)
+
+2. **Product Management**
+   - CRUD APIs for products
+   - Upload image with multer
+   - Auto SKU code generation
+   - Filter/sort/search products
+   - Update stock on sale/purchase
+
+3. **Inventory & Stock Tracking**
+   - Auto stock update
+   - Low-stock alerts
+   - Reorder recommendations
+
+4. **Sales & Purchase Management**
+   - Create invoice / order entries
+   - Link with users, suppliers, and products
+   - Export data (CSV / PDF)
+
+5. **AI Business Intelligence Bot**
+   - Route: `POST /api/ai/query`
+   - Input: `{ "question": "Which product had the most sales this month?" }`
+   - Output: Natural language answer with AI insights
+   - Use OpenAI API to generate summaries and decisions
+   - Combine AI with real MySQL data queries for smart insights
+   - Example response:
+     ```json
+     {
+       "response": "Product 'Router A1' sold 210 units this month — your top performer. Restock within 7 days."
+     }
+     ```
+
+6. **Dashboard Analytics**
+   - Return stats via API: total products, stock, monthly sales
+   - AI summary endpoint for business insights
+
+✅ API ROUTES:
+- /api/auth/
+- /api/products/
+- /api/sales/
+- /api/purchases/
+- /api/ai/
+- /api/settings/
+
+✅ FRONTEND INTEGRATION:
+- CORS setup to allow frontend connection
+- All endpoints return JSON
+- Example frontend fetch:
+  ```js
+  fetch("http://localhost:5000/api/ai/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question: "What product should I restock soon?" })
+  })
