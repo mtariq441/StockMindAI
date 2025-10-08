@@ -2,10 +2,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Download, TrendingUp, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Brain, Download, TrendingUp, AlertCircle, Send } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart } from "recharts";
-
-//todo: remove mock functionality
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 const forecastData = [
   { date: "Jan 1", actual: 4000, predicted: 3800, confidence: 200 },
   { date: "Jan 8", actual: 3000, predicted: 3200, confidence: 180 },
@@ -24,6 +27,29 @@ const restockSuggestions = [
 ];
 
 export default function Forecast() {
+  const [question, setQuestion] = useState("");
+  const [chatHistory, setChatHistory] = useState<Array<{ question: string; response: string }>>([]);
+  const { toast } = useToast();
+
+  const aiQueryMutation = useMutation({
+    mutationFn: async (query: string) => {
+      const res = await apiRequest("POST", "/api/ai/query", { question: query });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setChatHistory((prev) => [...prev, { question, response: data.response }]);
+      setQuestion("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleAskQuestion = () => {
+    if (!question.trim()) return;
+    aiQueryMutation.mutate(question);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -179,6 +205,52 @@ export default function Forecast() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Assistant Chat */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            AI Assistant
+          </CardTitle>
+          <CardDescription>Ask questions about your inventory and get AI-powered insights</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {chatHistory.length > 0 && (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {chatHistory.map((chat, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm font-medium">You:</p>
+                    <p className="text-sm">{chat.question}</p>
+                  </div>
+                  <div className="bg-primary/10 p-3 rounded-lg">
+                    <p className="text-sm font-medium">AI:</p>
+                    <p className="text-sm">{chat.response}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Ask a question about your inventory..."
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAskQuestion()}
+              data-testid="input-ai-question"
+              disabled={aiQueryMutation.isPending}
+            />
+            <Button 
+              onClick={handleAskQuestion} 
+              data-testid="button-ask-ai"
+              disabled={aiQueryMutation.isPending || !question.trim()}
+            >
+              {aiQueryMutation.isPending ? "..." : <Send className="h-4 w-4" />}
+            </Button>
           </div>
         </CardContent>
       </Card>

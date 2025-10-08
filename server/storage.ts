@@ -106,7 +106,7 @@ export class MemStorage implements IStorage {
       id: randomUUID(),
       username: "admin",
       email: "admin@inventory.com",
-      password: "$2b$10$YourHashedPasswordHere",
+      password: "$2b$10$TvP7Mi6cMBUqLElgSoexIeIJtWP/SUEUSdMMprqlz47EcIVvSi5tO",
       role: "admin",
       createdAt: new Date().toISOString(),
     };

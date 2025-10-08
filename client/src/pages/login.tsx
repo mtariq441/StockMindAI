@@ -2,20 +2,47 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Brain } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { LoginRequest } from "@shared/schema";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [role, setRole] = useState("admin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const { toast } = useToast();
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginRequest) => {
+      const res = await apiRequest("POST", "/api/auth/login", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${data.user.username}!`,
+      });
+      setLocation("/dashboard");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login submitted with role:", role);
-    setLocation("/dashboard");
+    loginMutation.mutate({ username, password });
   };
 
   return (
@@ -39,6 +66,8 @@ export default function Login() {
                 type="text"
                 placeholder="Enter your username"
                 data-testid="input-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -49,21 +78,10 @@ export default function Login() {
                 type="password"
                 placeholder="Enter your password"
                 data-testid="input-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger id="role" data-testid="select-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -76,8 +94,8 @@ export default function Login() {
                 Forgot password?
               </Button>
             </div>
-            <Button type="submit" className="w-full" data-testid="button-login">
-              Sign In
+            <Button type="submit" className="w-full" data-testid="button-login" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? "Signing In..." : "Sign In"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               Don't have an account?{" "}

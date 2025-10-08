@@ -5,27 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
-import { useState } from "react";
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  price: string;
-  supplier: string;
-  status: string;
-}
-
-//todo: remove mock functionality
-const mockProducts: Product[] = [
-  { id: "P001", name: "Wireless Mouse", category: "Electronics", quantity: 45, price: "$29.99", supplier: "TechCorp", status: "In Stock" },
-  { id: "P002", name: "USB Cable", category: "Electronics", quantity: 8, price: "$9.99", supplier: "CableWorld", status: "Low Stock" },
-  { id: "P003", name: "Keyboard", category: "Electronics", quantity: 23, price: "$59.99", supplier: "TechCorp", status: "In Stock" },
-  { id: "P004", name: "Monitor Stand", category: "Accessories", quantity: 15, price: "$39.99", supplier: "OfficeSupply", status: "In Stock" },
-  { id: "P005", name: "Webcam", category: "Electronics", quantity: 3, price: "$79.99", supplier: "TechCorp", status: "Low Stock" },
-];
+import { useState, useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Product, Category } from "@shared/schema";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,20 +20,87 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    category: "",
+    categoryId: "",
     quantity: "",
     price: "",
-    supplier: "",
+    cost: "",
+    minStock: "",
   });
+  const { toast } = useToast();
+
+  const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  const createProductMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/products", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Success", description: "Product created successfully" });
+      setIsDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PUT", `/api/products/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Success", description: "Product updated successfully" });
+      setIsDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/products/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Success", description: "Product deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === "all" || product.categoryId === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
 
   const handleAddProduct = () => {
     setEditingProduct(null);
     setFormData({
       name: "",
-      category: "",
-      quantity: "",
-      price: "",
-      supplier: "",
+      categoryId: "",
+      quantity: "0",
+      price: "0",
+      cost: "0",
+      minStock: "10",
     });
     setIsDialogOpen(true);
   };
@@ -56,18 +109,36 @@ export default function Products() {
     setEditingProduct(product);
     setFormData({
       name: product.name,
-      category: product.category,
+      categoryId: product.categoryId || "",
       quantity: product.quantity.toString(),
-      price: product.price.replace("$", ""),
-      supplier: product.supplier,
+      price: product.price.toString(),
+      cost: product.cost.toString(),
+      minStock: product.minStock.toString(),
     });
     setIsDialogOpen(true);
   };
 
   const handleSaveProduct = () => {
-    // TODO: Implement actual save logic with API
-    console.log("Saving product:", formData);
-    setIsDialogOpen(false);
+    const productData = {
+      name: formData.name,
+      categoryId: formData.categoryId || undefined,
+      quantity: parseInt(formData.quantity),
+      price: parseFloat(formData.price),
+      cost: parseFloat(formData.cost),
+      minStock: parseInt(formData.minStock),
+    };
+
+    if (editingProduct) {
+      updateProductMutation.mutate({ id: editingProduct.id, data: productData });
+    } else {
+      createProductMutation.mutate(productData);
+    }
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      deleteProductMutation.mutate(id);
+    }
   };
 
   return (
@@ -103,9 +174,11 @@ export default function Products() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="electronics">Electronics</SelectItem>
-                <SelectItem value="accessories">Accessories</SelectItem>
-                <SelectItem value="clothing">Clothing</SelectItem>
+                {categories?.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select defaultValue="all">
@@ -130,49 +203,59 @@ export default function Products() {
           <CardDescription>A list of all products in your inventory</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Product ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Quantity</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Price</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Supplier</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockProducts.map((product) => (
-                  <tr key={product.id} className="border-b border-border hover:bg-muted/50" data-testid={`row-product-${product.id}`}>
-                    <td className="py-3 px-4 text-sm font-mono">{product.id}</td>
-                    <td className="py-3 px-4 text-sm font-medium">{product.name}</td>
-                    <td className="py-3 px-4 text-sm">{product.category}</td>
-                    <td className="py-3 px-4 text-sm text-right font-mono">{product.quantity}</td>
-                    <td className="py-3 px-4 text-sm text-right font-mono">{product.price}</td>
-                    <td className="py-3 px-4 text-sm">{product.supplier}</td>
-                    <td className="py-3 px-4 text-sm">
-                      <Badge variant={product.status === "Low Stock" ? "destructive" : "secondary"}>
-                        {product.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-sm">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" data-testid={`button-edit-${product.id}`} onClick={() => handleEditProduct(product)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" data-testid={`button-delete-${product.id}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+          {productsLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">SKU</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Quantity</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Price</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredProducts.map((product) => {
+                    const category = categories?.find((c) => c.id === product.categoryId);
+                    const isLowStock = product.quantity <= product.minStock;
+                    return (
+                      <tr key={product.id} className="border-b border-border hover:bg-muted/50" data-testid={`row-product-${product.id}`}>
+                        <td className="py-3 px-4 text-sm font-mono">{product.sku}</td>
+                        <td className="py-3 px-4 text-sm font-medium">{product.name}</td>
+                        <td className="py-3 px-4 text-sm">{category?.name || "—"}</td>
+                        <td className="py-3 px-4 text-sm text-right font-mono">{product.quantity}</td>
+                        <td className="py-3 px-4 text-sm text-right font-mono">${product.price.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm">
+                          <Badge variant={isLowStock ? "destructive" : "secondary"}>
+                            {isLowStock ? "Low Stock" : "In Stock"}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" data-testid={`button-edit-${product.id}`} onClick={() => handleEditProduct(product)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" data-testid={`button-delete-${product.id}`} onClick={() => handleDeleteProduct(product.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -199,16 +282,18 @@ export default function Products() {
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
               <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                value={formData.categoryId}
+                onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
               >
                 <SelectTrigger data-testid="select-product-category">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Electronics">Electronics</SelectItem>
-                  <SelectItem value="Accessories">Accessories</SelectItem>
-                  <SelectItem value="Clothing">Clothing</SelectItem>
+                  {categories?.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -227,6 +312,8 @@ export default function Products() {
               <Label htmlFor="price">Price</Label>
               <Input
                 id="price"
+                type="number"
+                step="0.01"
                 data-testid="input-product-price"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
@@ -234,13 +321,26 @@ export default function Products() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="supplier">Supplier</Label>
+              <Label htmlFor="cost">Cost</Label>
               <Input
-                id="supplier"
-                data-testid="input-product-supplier"
-                value={formData.supplier}
-                onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                placeholder="Enter supplier name"
+                id="cost"
+                type="number"
+                step="0.01"
+                data-testid="input-product-cost"
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                placeholder="Enter cost (e.g., 15.99)"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="minStock">Minimum Stock</Label>
+              <Input
+                id="minStock"
+                type="number"
+                data-testid="input-product-minstock"
+                value={formData.minStock}
+                onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
+                placeholder="Enter minimum stock level"
               />
             </div>
           </div>
@@ -248,8 +348,17 @@ export default function Products() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveProduct} data-testid="button-save-product">
-              {editingProduct ? "Update" : "Add"} Product
+            <Button 
+              onClick={handleSaveProduct} 
+              data-testid="button-save-product"
+              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+            >
+              {createProductMutation.isPending || updateProductMutation.isPending
+                ? "Saving..."
+                : editingProduct
+                ? "Update"
+                : "Add"}{" "}
+              Product
             </Button>
           </DialogFooter>
         </DialogContent>

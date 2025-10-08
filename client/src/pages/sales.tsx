@@ -5,18 +5,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useState } from "react";
-
-//todo: remove mock functionality
-const salesHistory = [
-  { id: "S001", date: "2025-01-08", product: "Wireless Mouse", quantity: 5, total: "$149.95", status: "Completed" },
-  { id: "S002", date: "2025-01-08", product: "USB Cable", quantity: 10, total: "$99.90", status: "Completed" },
-  { id: "S003", date: "2025-01-07", product: "Keyboard", quantity: 3, total: "$179.97", status: "Completed" },
-  { id: "S004", date: "2025-01-07", product: "Monitor Stand", quantity: 2, total: "$79.98", status: "Completed" },
-  { id: "S005", date: "2025-01-06", product: "Webcam", quantity: 4, total: "$319.96", status: "Completed" },
-];
+import { useState, useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Product, Sale } from "@shared/schema";
 
 const dailySales = [
   { day: "Mon", sales: 1200 },
@@ -28,33 +24,79 @@ const dailySales = [
   { day: "Sun", sales: 900 },
 ];
 
-const mockProducts = [
-  { id: "P001", name: "Wireless Mouse", price: 29.99 },
-  { id: "P002", name: "USB Cable", price: 9.99 },
-  { id: "P003", name: "Keyboard", price: 59.99 },
-  { id: "P004", name: "Monitor Stand", price: 39.99 },
-  { id: "P005", name: "Webcam", price: 79.99 },
-];
-
 export default function Sales() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
-    product: "",
+    productId: "",
     quantity: "",
   });
+  const { toast } = useToast();
+
+  const { data: sales, isLoading: salesLoading } = useQuery<Sale[]>({
+    queryKey: ["/api/sales"],
+  });
+
+  const { data: products } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const recordSaleMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      const res = await apiRequest("POST", "/api/sales", {
+        ...data,
+        userId: user?.id,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Success", description: "Sale recorded successfully" });
+      setIsDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const salesWithProducts = useMemo(() => {
+    if (!sales || !products) return [];
+    return sales.map((sale) => ({
+      ...sale,
+      product: products.find((p) => p.id === sale.productId),
+    }));
+  }, [sales, products]);
 
   const handleRecordSale = () => {
     setFormData({
-      product: "",
+      productId: "",
       quantity: "",
     });
     setIsDialogOpen(true);
   };
 
   const handleSaveSale = () => {
-    // TODO: Implement actual save logic with API
-    console.log("Recording sale:", formData);
-    setIsDialogOpen(false);
+    const selectedProduct = products?.find((p) => p.id === formData.productId);
+    if (!selectedProduct) {
+      toast({ title: "Error", description: "Please select a product", variant: "destructive" });
+      return;
+    }
+
+    const quantity = parseInt(formData.quantity);
+    if (quantity <= 0) {
+      toast({ title: "Error", description: "Quantity must be greater than 0", variant: "destructive" });
+      return;
+    }
+
+    recordSaleMutation.mutate({
+      productId: formData.productId,
+      quantity,
+      unitPrice: selectedProduct.price,
+    });
   };
   return (
     <div className="space-y-6">
@@ -102,34 +144,42 @@ export default function Sales() {
           <CardDescription>Latest sales transactions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Sale ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Product</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Quantity</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {salesHistory.map((sale) => (
-                  <tr key={sale.id} className="border-b border-border hover:bg-muted/50" data-testid={`row-sale-${sale.id}`}>
-                    <td className="py-3 px-4 text-sm font-mono">{sale.id}</td>
-                    <td className="py-3 px-4 text-sm">{sale.date}</td>
-                    <td className="py-3 px-4 text-sm font-medium">{sale.product}</td>
-                    <td className="py-3 px-4 text-sm text-right font-mono">{sale.quantity}</td>
-                    <td className="py-3 px-4 text-sm text-right font-mono">{sale.total}</td>
-                    <td className="py-3 px-4 text-sm">
-                      <Badge variant="secondary">{sale.status}</Badge>
-                    </td>
+          {salesLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Product</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Quantity</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Unit Price</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {salesWithProducts.map((sale) => (
+                    <tr key={sale.id} className="border-b border-border hover:bg-muted/50" data-testid={`row-sale-${sale.id}`}>
+                      <td className="py-3 px-4 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3 px-4 text-sm font-medium">{sale.product?.name || "Unknown"}</td>
+                      <td className="py-3 px-4 text-sm text-right font-mono">{sale.quantity}</td>
+                      <td className="py-3 px-4 text-sm text-right font-mono">${sale.unitPrice.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right font-mono">${sale.totalPrice.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm">
+                        <Badge variant="secondary">Completed</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -146,16 +196,16 @@ export default function Sales() {
             <div className="grid gap-2">
               <Label htmlFor="product">Product</Label>
               <Select
-                value={formData.product}
-                onValueChange={(value) => setFormData({ ...formData, product: value })}
+                value={formData.productId}
+                onValueChange={(value) => setFormData({ ...formData, productId: value })}
               >
                 <SelectTrigger data-testid="select-sale-product">
                   <SelectValue placeholder="Select product" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockProducts.map((product) => (
+                  {products?.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
-                      {product.name} - ${product.price}
+                      {product.name} - ${product.price.toFixed(2)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -177,8 +227,12 @@ export default function Sales() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveSale} data-testid="button-save-sale">
-              Record Sale
+            <Button 
+              onClick={handleSaveSale} 
+              data-testid="button-save-sale"
+              disabled={recordSaleMutation.isPending}
+            >
+              {recordSaleMutation.isPending ? "Recording..." : "Record Sale"}
             </Button>
           </DialogFooter>
         </DialogContent>

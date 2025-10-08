@@ -3,8 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Package, TrendingUp, AlertTriangle, Brain } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import type { Product } from "@shared/schema";
 
-//todo: remove mock functionality
 const salesData = [
   { month: "Jan", sales: 4000, forecast: 4200 },
   { month: "Feb", sales: 3000, forecast: 3200 },
@@ -21,13 +23,19 @@ const productData = [
   { name: "Others", value: 10 },
 ];
 
-const lowStockItems = [
-  { id: 1, name: "Wireless Mouse", stock: 5, threshold: 10 },
-  { id: 2, name: "USB Cable", stock: 3, threshold: 15 },
-  { id: 3, name: "Keyboard", stock: 7, threshold: 12 },
-];
-
 export default function Dashboard() {
+  const { data: stats, isLoading: statsLoading } = useQuery<{
+    totalProducts: number;
+    totalRevenue: number;
+    lowStockCount: number;
+    monthlyRevenue: number;
+  }>({
+    queryKey: ["/api/dashboard/stats"],
+  });
+
+  const { data: lowStockProducts, isLoading: lowStockLoading } = useQuery<Product[]>({
+    queryKey: ["/api/products/low-stock"],
+  });
   return (
     <div className="space-y-6">
       <div>
@@ -37,30 +45,38 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Products"
-          value="1,234"
-          icon={Package}
-          trend={{ value: "12%", positive: true }}
-        />
-        <StatCard
-          title="Total Sales"
-          value="$45,231"
-          icon={TrendingUp}
-          trend={{ value: "8%", positive: true }}
-        />
-        <StatCard
-          title="Low Stock Items"
-          value="23"
-          icon={AlertTriangle}
-          trend={{ value: "3", positive: false }}
-        />
-        <StatCard
-          title="AI Predictions"
-          value="98%"
-          icon={Brain}
-          description="Accuracy rate"
-        />
+        {statsLoading ? (
+          <>
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total Products"
+              value={stats?.totalProducts.toString() || "0"}
+              icon={Package}
+            />
+            <StatCard
+              title="Total Revenue"
+              value={`$${stats?.totalRevenue.toLocaleString() || "0"}`}
+              icon={TrendingUp}
+            />
+            <StatCard
+              title="Low Stock Items"
+              value={stats?.lowStockCount.toString() || "0"}
+              icon={AlertTriangle}
+            />
+            <StatCard
+              title="Monthly Revenue"
+              value={`$${stats?.monthlyRevenue.toLocaleString() || "0"}`}
+              icon={Brain}
+              description="This month"
+            />
+          </>
+        )}
       </div>
 
       {/* Charts */}
@@ -126,19 +142,29 @@ export default function Dashboard() {
           <CardDescription>Items that need restocking soon</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {lowStockItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover-elevate">
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Current: {item.stock} | Threshold: {item.threshold}
-                  </p>
+          {lowStockLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : lowStockProducts && lowStockProducts.length > 0 ? (
+            <div className="space-y-4">
+              {lowStockProducts.map((product) => (
+                <div key={product.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover-elevate">
+                  <div>
+                    <p className="font-medium">{product.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Current: {product.quantity} | Min: {product.minStock}
+                    </p>
+                  </div>
+                  <Badge variant="destructive">Low Stock</Badge>
                 </div>
-                <Badge variant="destructive">Low Stock</Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">No low stock items</p>
+          )}
         </CardContent>
       </Card>
     </div>
