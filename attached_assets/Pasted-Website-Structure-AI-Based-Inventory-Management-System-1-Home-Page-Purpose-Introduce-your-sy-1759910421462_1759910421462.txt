@@ -1,0 +1,218 @@
+Website Structure — AI-Based Inventory Management System
+🏠 1. Home Page
+
+Purpose: Introduce your system and its AI capabilities.
+
+Sections:
+
+Hero Section — short intro about your system
+
+“Smart Inventory Control with AI-Powered Forecasting”
+
+Key Features (cards):
+
+Real-time stock tracking
+
+AI demand forecasting
+
+Automated restocking
+
+Sales analytics dashboard
+
+Demo/CTA button → “Login to Dashboard” or “Try Demo”
+
+Contact info / footer
+
+🔐 2. Login & Signup
+
+URL: /login and /register
+
+Features:
+
+Role-based login (Admin, Manager, Staff)
+
+Secure authentication (JWT or session-based)
+
+Forgot password option
+
+🧑‍💼 3. Admin Dashboard
+
+URL: /admin/dashboard
+
+Main Components:
+
+Sidebar Menu:
+
+Dashboard
+
+Products
+
+Categories
+
+Suppliers
+
+Sales
+
+AI Forecast
+
+Reports
+
+Users
+
+Settings
+
+Dashboard Overview Cards:
+
+Total Products
+
+Total Sales
+
+Low Stock Items
+
+Predicted Stock Alerts
+
+Graphs/Charts:
+
+Sales trends (Chart.js / Recharts)
+
+AI Demand Forecast Graph
+
+Notifications (low stock, upcoming orders)
+
+📦 4. Products Page
+
+URL: /products
+
+Features:
+
+Add / Edit / Delete product
+
+View all products with search & filter
+
+Upload product images
+
+Columns: Product ID, Name, Category, Quantity, Price, Supplier
+
+“Low Stock” indicator (e.g., < 10 units)
+
+🏷️ 5. Categories Page
+
+URL: /categories
+
+Features:
+
+Add / Edit / Delete categories
+
+Filter products by category
+
+🧾 6. Sales Page
+
+URL: /sales
+
+Features:
+
+Record a new sale
+
+Auto-update product stock
+
+Show sales history table
+
+Graph: Daily / Monthly sales performance
+
+🧠 7. AI Forecasting Page
+
+URL: /forecast
+
+Features:
+
+AI predicts product demand for upcoming days/weeks
+
+Graph showing predicted vs. actual sales
+
+“Restock Suggestions” list
+
+Option to generate CSV report of predictions
+
+AI Model Input:
+
+Product sales data
+
+Time range
+
+Seasonal patterns (optional)
+
+AI Model Output:
+
+Predicted quantity needed
+
+Restock alert if below threshold
+
+📊 8. Reports Page
+
+URL: /reports
+
+Features:
+
+Generate and download reports:
+
+Sales Report
+
+Inventory Report
+
+Forecast Report
+
+Export in PDF / CSV format
+
+🚚 9. Suppliers Page
+
+URL: /suppliers
+
+Features:
+
+Add / Edit / Delete supplier info
+
+Contact details, product association
+
+👥 10. Users Management (Admin only)
+
+URL: /users
+
+Features:
+
+Manage user roles (Admin, Manager, Staff)
+
+Add new user accounts
+
+Change permissions
+
+⚙️ 11. Settings Page
+
+URL: /settings
+
+Features:
+
+Company info
+
+Threshold values (e.g., Low Stock Limit)
+
+Profile management
+
+System preferences
+
+📞 12. Contact / Support Page
+
+URL: /contact
+
+Features:
+
+Contact form
+
+Feedback or bug report section
+
+🔚 Footer (Global)
+
+Elements:
+
+© 2025 AI Inventory System
+
+Links: Home | Dashboard | Contact | Privacy Policy
