@@ -1,8 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useState } from "react";
 
 //todo: remove mock functionality
 const salesHistory = [
@@ -23,7 +28,34 @@ const dailySales = [
   { day: "Sun", sales: 900 },
 ];
 
+const mockProducts = [
+  { id: "P001", name: "Wireless Mouse", price: 29.99 },
+  { id: "P002", name: "USB Cable", price: 9.99 },
+  { id: "P003", name: "Keyboard", price: 59.99 },
+  { id: "P004", name: "Monitor Stand", price: 39.99 },
+  { id: "P005", name: "Webcam", price: 79.99 },
+];
+
 export default function Sales() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    product: "",
+    quantity: "",
+  });
+
+  const handleRecordSale = () => {
+    setFormData({
+      product: "",
+      quantity: "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveSale = () => {
+    // TODO: Implement actual save logic with API
+    console.log("Recording sale:", formData);
+    setIsDialogOpen(false);
+  };
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -31,7 +63,7 @@ export default function Sales() {
           <h1 className="text-3xl font-bold tracking-tight">Sales</h1>
           <p className="text-muted-foreground">Track and record sales transactions</p>
         </div>
-        <Button data-testid="button-record-sale">
+        <Button data-testid="button-record-sale" onClick={handleRecordSale}>
           <Plus className="h-4 w-4 mr-2" />
           Record Sale
         </Button>
@@ -100,6 +132,57 @@ export default function Sales() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Record Sale Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent data-testid="form-sale-dialog">
+          <DialogHeader>
+            <DialogTitle>Record Sale</DialogTitle>
+            <DialogDescription>
+              Record a new sales transaction
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="product">Product</Label>
+              <Select
+                value={formData.product}
+                onValueChange={(value) => setFormData({ ...formData, product: value })}
+              >
+                <SelectTrigger data-testid="select-sale-product">
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockProducts.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} - ${product.price}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="quantity">Quantity</Label>
+              <Input
+                id="quantity"
+                type="number"
+                data-testid="input-sale-quantity"
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                placeholder="Enter quantity"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveSale} data-testid="button-save-sale">
+              Record Sale
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
