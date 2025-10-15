@@ -10,6 +10,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 neonConfig.webSocketConstructor = ws;
+neonConfig.pipelineConnect = false;
+neonConfig.useSecureWebSocket = true;
+neonConfig.forceDisablePgSSL = true;
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
