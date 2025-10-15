@@ -385,15 +385,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const totalProducts = products.length;
       const totalStock = products.reduce((sum, p) => sum + p.quantity, 0);
-      const totalRevenue = sales.reduce((sum, s) => sum + s.totalPrice, 0);
-      const totalCost = purchases.reduce((sum, p) => sum + p.totalCost, 0);
+      const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.totalPrice), 0);
+      const totalCost = purchases.reduce((sum, p) => sum + parseFloat(p.totalCost), 0);
       const lowStockCount = products.filter(p => p.quantity <= p.minStock).length;
 
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const monthEnd = now.toISOString();
       const monthlySales = await storage.getSalesByDateRange(monthStart, monthEnd);
-      const monthlyRevenue = monthlySales.reduce((sum, s) => sum + s.totalPrice, 0);
+      const monthlyRevenue = monthlySales.reduce((sum, s) => sum + parseFloat(s.totalPrice), 0);
 
       res.json({
         totalProducts,
