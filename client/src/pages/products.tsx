@@ -123,8 +123,8 @@ export default function Products() {
       name: formData.name,
       categoryId: formData.categoryId || undefined,
       quantity: parseInt(formData.quantity),
-      price: parseFloat(formData.price),
-      cost: parseFloat(formData.cost),
+      price: formData.price,
+      cost: formData.cost,
       minStock: parseInt(formData.minStock),
     };
 
@@ -233,7 +233,7 @@ export default function Products() {
                         <td className="py-3 px-4 text-sm font-medium">{product.name}</td>
                         <td className="py-3 px-4 text-sm">{category?.name || "—"}</td>
                         <td className="py-3 px-4 text-sm text-right font-mono">{product.quantity}</td>
-                        <td className="py-3 px-4 text-sm text-right font-mono">${product.price.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-sm text-right font-mono">${parseFloat(product.price).toFixed(2)}</td>
                         <td className="py-3 px-4 text-sm">
                           <Badge variant={isLowStock ? "destructive" : "secondary"}>
                             {isLowStock ? "Low Stock" : "In Stock"}
