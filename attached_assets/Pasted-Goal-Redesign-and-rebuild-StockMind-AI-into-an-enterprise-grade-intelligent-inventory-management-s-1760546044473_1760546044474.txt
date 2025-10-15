@@ -1,0 +1,274 @@
+Goal:
+Redesign and rebuild StockMind AI into an enterprise-grade, intelligent inventory management system — powered by AI automation, a dark premium theme, and a Supabase + Node.js backend.
+The new design must exceed Zoho Inventory, QuickBooks, Odoo, and Oracle NetSuite in UX smoothness, feature depth, and professional polish.
+
+🌌 Core Vision
+
+“StockMind AI” is not just another inventory tool — it’s an AI co-pilot for business operations.
+It should feel beautiful, intelligent, and seamless, like a futuristic command center for product, supplier, and order management.
+
+🎨 Design System (Dark Premium Mode)
+
+Theme: Deep navy & violet gradients with glass morphism panels and luminous accents.
+
+Style: Minimal, clean, enterprise-grade — no heavy shadows. Use soft depth, blur, and layered glass transparency.
+
+Typography: Modern sans-serif (e.g., Inter, Satoshi, or Space Grotesk).
+
+Effects: Micro animations, motion transitions, hover glows, and loading shimmer effects.
+
+UI Architecture:
+
+Sticky Top Navigation Bar with profile dropdown, AI assistant button, and global search.
+
+Compact Sidebar (collapsible) with section icons: Dashboard, Products, Suppliers, Orders, Reports, Admin, Settings.
+
+Modular Dashboard Cards for key KPIs (inventory value, low stock alerts, active suppliers, AI predictions).
+
+AI Command Bar (Ctrl + K) — universal smart search and action trigger.
+
+⚙️ Tech Stack (Keep existing Supabase DB)
+
+Frontend: React + Vite + Tailwind + Framer Motion
+Backend: Node.js + Express + Supabase (Postgres)
+Database: Already created on Supabase (connect using service key)
+Auth: Supabase Auth (email/password) + Role-based access control (Admin, Manager, Staff)
+AI: Built-in AI agent powered by OpenAI API (mock until connected)
+Deployment: Replit + Supabase Cloud
+
+🧩 Folder Structure (Rebuild in Lovable)
+/frontend
+  /src
+    /pages
+      Login.jsx
+      Dashboard.jsx
+      Products.jsx
+      Suppliers.jsx
+      Orders.jsx
+      Reports.jsx
+      Admin.jsx
+      Settings.jsx
+    /components
+      Navbar.jsx
+      Sidebar.jsx
+      Card.jsx
+      Table.jsx
+      Form.jsx
+      Toast.jsx
+      Loader.jsx
+      AIChatPanel.jsx
+    /services
+      api.js
+      auth.js
+    /context
+      AuthContext.jsx
+    /styles
+      theme.css
+/backend
+  /src
+    server.js
+    routes/
+      auth.js
+      products.js
+      suppliers.js
+      orders.js
+      reports.js
+      admin.js
+      ai.js
+    middleware/
+      authMiddleware.js
+    config/
+      supabase.js
+      env.js
+
+🔐 Authentication Flow
+
+Email/password signup and login using Supabase Auth.
+
+Auto-create user profile in profiles table with default role = “staff”.
+
+Admin panel should allow role upgrades (e.g., promote staff → admin).
+
+JWT sessions managed by backend for secure API calls.
+
+“Remember me” login and 2FA (optional future feature).
+
+🧠 Core Functional Modules
+1. Dashboard
+
+Real-time metrics:
+
+Total Products
+
+Low Stock Alerts
+
+Inventory Value
+
+Orders in Progress
+
+Suppliers Active
+
+AI widget: “Predict next stock-out” with chart & recommendations.
+
+Smooth animated counters, gradient backgrounds, and small sparkle glow when updated.
+
+2. Products Module
+
+CRUD operations (add, edit, delete products)
+
+Bulk import via CSV
+
+Auto-generated SKU IDs
+
+Product categories
+
+Stock levels and reorder threshold
+
+AI-powered “Restock Recommendation” button
+
+3. Suppliers Module
+
+Supplier profiles (name, contact, reliability score)
+
+Linked products
+
+AI suggestion: “Best supplier for product X” based on history.
+
+4. Orders Module
+
+Sales and Purchase order creation
+
+Auto stock adjustment after confirmation
+
+Payment status tracking
+
+Invoice generation (PDF)
+
+Optional barcode scanning support
+
+5. Reports
+
+Real-time insights:
+
+Inventory turnover
+
+Supplier performance
+
+Product demand trend (AI prediction)
+
+Export reports as PDF/Excel.
+
+6. Admin Panel
+
+Manage users, roles, and permissions.
+
+Approve new registrations.
+
+View system logs (login attempts, errors, actions).
+
+Global settings (currency, tax rates, AI options).
+
+7. AI Assistant
+
+Chat-style AI helper in sidebar or floating panel.
+
+Commands like:
+
+“Show me low-stock items”
+
+“Predict demand for next week”
+
+“Add a new supplier”
+
+“Generate purchase order for item X”
+
+Integrate OpenAI API or use local mock.
+
+🗄️ Database Schema (Supabase)
+
+users → auth handled by Supabase
+
+profiles (id, name, role, email, created_at)
+
+products (id, name, sku, category, qty, price, supplier_id)
+
+suppliers (id, name, contact, email, reliability)
+
+orders (id, type, product_id, qty, total, status)
+
+alerts (id, product_id, severity, message, created_at)
+
+logs (id, action, user_id, timestamp)
+
+🧰 Backend API Routes (Node + Express)
+Route	Method	Description
+/api/auth/login	POST	Login user
+/api/auth/signup	POST	Register user
+/api/auth/me	GET	Fetch current user
+/api/products	CRUD	Product management
+/api/suppliers	CRUD	Supplier management
+/api/orders	CRUD	Order creation & tracking
+/api/reports	GET	Data analytics
+/api/admin	GET/PUT	Manage users
+/api/ai	POST	AI predictions & chat
+🧪 Testing & QA (Lovable should auto-test)
+
+Validate every button, input, and form works properly.
+
+Test all CRUD APIs with Supabase.
+
+Confirm data persists across reloads.
+
+Ensure login/logout works with correct session state.
+
+Confirm all graphs load data dynamically.
+
+Check responsiveness on desktop, tablet, and mobile.
+
+🧱 Extra Features to Surpass Zoho & Odoo
+
+✅ Multi-warehouse support (assign stock by location)
+✅ Audit logs for all inventory changes
+✅ Product image upload (via Supabase storage)
+✅ AI demand forecasting graph
+✅ Purchase order automation
+✅ Supplier reliability analytics
+✅ Real-time notifications (via Supabase Realtime)
+✅ Global search (Command + K)
+✅ Role-based dashboards
+✅ Offline mode (cache key data)
+✅ Settings page (business name, logo, tax rate, theme toggle)
+
+🧩 Next Step Instruction
+
+In Lovable, do the following:
+
+Start fresh project → select Node + React stack.
+
+Paste this prompt into the description input.
+
+When the base app is generated, instruct Lovable:
+
+Connect to Supabase database using existing credentials.
+Verify all endpoints (auth, products, suppliers, orders).
+Ensure every page (Dashboard, Products, Suppliers, Admin) is functional.
+Test all flows end-to-end and fix any errors automatically.
+Remove unnecessary placeholder pages.
+
+
+Let Lovable generate & test everything.
+
+Once ready, export or import into Replit for manual code editing and feature expansion.
+
+Would you like me to extend this prompt to include:
+
+💬 Voice + Chat AI Assistant (real-time OpenAI integration)
+
+📦 Inventory Forecast Graphs (using Chart.js or Recharts)
+
+📱 Mobile responsive layout
+
+🧠 Smart auto-purchase orders (based on low-stock detection)
+
+I can add all of these into the final Lovable master prompt so you can paste it once and get everything in one build.
+Should I include those advanced AI & automation features too?
