@@ -1,4 +1,11 @@
 import {
+  users,
+  categories,
+  suppliers,
+  products,
+  sales,
+  purchases,
+  stockAlerts,
   type User,
   type InsertUser,
   type Product,
@@ -14,10 +21,10 @@ import {
   type StockAlert,
   type InsertStockAlert,
 } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, gte, lte, and, sql } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -26,21 +33,18 @@ export interface IStorage {
   updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
 
-  // Category operations
   getAllCategories(): Promise<Category[]>;
   getCategory(id: string): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(id: string, category: Partial<Category>): Promise<Category | undefined>;
   deleteCategory(id: string): Promise<boolean>;
 
-  // Supplier operations
   getAllSuppliers(): Promise<Supplier[]>;
   getSupplier(id: string): Promise<Supplier | undefined>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: string, supplier: Partial<Supplier>): Promise<Supplier | undefined>;
   deleteSupplier(id: string): Promise<boolean>;
 
-  // Product operations
   getAllProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
   getProductBySku(sku: string): Promise<Product | undefined>;
@@ -52,7 +56,6 @@ export interface IStorage {
   updateProductStock(id: string, quantity: number): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<boolean>;
 
-  // Sale operations
   getAllSales(): Promise<Sale[]>;
   getSale(id: string): Promise<Sale | undefined>;
   getSalesByProduct(productId: string): Promise<Sale[]>;
@@ -61,7 +64,6 @@ export interface IStorage {
   createSale(sale: InsertSale): Promise<Sale>;
   deleteSale(id: string): Promise<boolean>;
 
-  // Purchase operations
   getAllPurchases(): Promise<Purchase[]>;
   getPurchase(id: string): Promise<Purchase | undefined>;
   getPurchasesByProduct(productId: string): Promise<Purchase[]>;
@@ -70,7 +72,6 @@ export interface IStorage {
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
   deletePurchase(id: string): Promise<boolean>;
 
-  // Stock Alert operations
   getAllStockAlerts(): Promise<StockAlert[]>;
   getActiveStockAlerts(): Promise<StockAlert[]>;
   getStockAlert(id: string): Promise<StockAlert | undefined>;
@@ -79,234 +80,127 @@ export interface IStorage {
   deleteStockAlert(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private categories: Map<string, Category>;
-  private suppliers: Map<string, Supplier>;
-  private products: Map<string, Product>;
-  private sales: Map<string, Sale>;
-  private purchases: Map<string, Purchase>;
-  private stockAlerts: Map<string, StockAlert>;
-  private skuCounter: number;
-
-  constructor() {
-    this.users = new Map();
-    this.categories = new Map();
-    this.suppliers = new Map();
-    this.products = new Map();
-    this.sales = new Map();
-    this.purchases = new Map();
-    this.stockAlerts = new Map();
-    this.skuCounter = 1000;
-    this.seedData();
-  }
-
-  private seedData() {
-    const adminUser: User = {
-      id: randomUUID(),
-      username: "admin",
-      email: "admin@inventory.com",
-      password: "$2b$10$TvP7Mi6cMBUqLElgSoexIeIJtWP/SUEUSdMMprqlz47EcIVvSi5tO",
-      role: "admin",
-      createdAt: new Date().toISOString(),
-    };
-    this.users.set(adminUser.id, adminUser);
-
-    const electronics: Category = {
-      id: randomUUID(),
-      name: "Electronics",
-      description: "Electronic devices and accessories",
-      createdAt: new Date().toISOString(),
-    };
-    this.categories.set(electronics.id, electronics);
-
-    const supplier: Supplier = {
-      id: randomUUID(),
-      name: "Tech Supplies Inc",
-      email: "contact@techsupplies.com",
-      phone: "+1-555-0100",
-      address: "123 Tech Street, Silicon Valley, CA",
-      createdAt: new Date().toISOString(),
-    };
-    this.suppliers.set(supplier.id, supplier);
-
-    const product: Product = {
-      id: randomUUID(),
-      sku: this.generateSku(),
-      name: "Wireless Mouse",
-      description: "Ergonomic wireless mouse with USB receiver",
-      categoryId: electronics.id,
-      supplierId: supplier.id,
-      price: 29.99,
-      cost: 15.00,
-      quantity: 150,
-      minStock: 20,
-      createdAt: new Date().toISOString(),
-    };
-    this.products.set(product.id, product);
-  }
-
-  private generateSku(): string {
-    return `SKU-${this.skuCounter++}`;
-  }
-
-  // User operations
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email === email
-    );
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return await db.select().from(users);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = {
-      ...insertUser,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    const updatedUser = { ...user, ...updates };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    return user || undefined;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    return this.users.delete(id);
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  // Category operations
   async getAllCategories(): Promise<Category[]> {
-    return Array.from(this.categories.values());
+    return await db.select().from(categories);
   }
 
   async getCategory(id: string): Promise<Category | undefined> {
-    return this.categories.get(id);
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category || undefined;
   }
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {
-    const id = randomUUID();
-    const category: Category = {
-      ...insertCategory,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    this.categories.set(id, category);
+    const [category] = await db.insert(categories).values(insertCategory).returning();
     return category;
   }
 
   async updateCategory(id: string, updates: Partial<Category>): Promise<Category | undefined> {
-    const category = this.categories.get(id);
-    if (!category) return undefined;
-    const updatedCategory = { ...category, ...updates };
-    this.categories.set(id, updatedCategory);
-    return updatedCategory;
+    const [category] = await db.update(categories).set(updates).where(eq(categories.id, id)).returning();
+    return category || undefined;
   }
 
   async deleteCategory(id: string): Promise<boolean> {
-    return this.categories.delete(id);
+    const result = await db.delete(categories).where(eq(categories.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  // Supplier operations
   async getAllSuppliers(): Promise<Supplier[]> {
-    return Array.from(this.suppliers.values());
+    return await db.select().from(suppliers);
   }
 
   async getSupplier(id: string): Promise<Supplier | undefined> {
-    return this.suppliers.get(id);
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
+    return supplier || undefined;
   }
 
   async createSupplier(insertSupplier: InsertSupplier): Promise<Supplier> {
-    const id = randomUUID();
-    const supplier: Supplier = {
-      ...insertSupplier,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    this.suppliers.set(id, supplier);
+    const [supplier] = await db.insert(suppliers).values(insertSupplier).returning();
     return supplier;
   }
 
   async updateSupplier(id: string, updates: Partial<Supplier>): Promise<Supplier | undefined> {
-    const supplier = this.suppliers.get(id);
-    if (!supplier) return undefined;
-    const updatedSupplier = { ...supplier, ...updates };
-    this.suppliers.set(id, updatedSupplier);
-    return updatedSupplier;
+    const [supplier] = await db.update(suppliers).set(updates).where(eq(suppliers.id, id)).returning();
+    return supplier || undefined;
   }
 
   async deleteSupplier(id: string): Promise<boolean> {
-    return this.suppliers.delete(id);
+    const result = await db.delete(suppliers).where(eq(suppliers.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  // Product operations
   async getAllProducts(): Promise<Product[]> {
-    return Array.from(this.products.values());
+    return await db.select().from(products);
   }
 
   async getProduct(id: string): Promise<Product | undefined> {
-    return this.products.get(id);
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product || undefined;
   }
 
   async getProductBySku(sku: string): Promise<Product | undefined> {
-    return Array.from(this.products.values()).find(
-      (product) => product.sku === sku
-    );
+    const [product] = await db.select().from(products).where(eq(products.sku, sku));
+    return product || undefined;
   }
 
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
-    return Array.from(this.products.values()).filter(
-      (product) => product.categoryId === categoryId
-    );
+    return await db.select().from(products).where(eq(products.categoryId, categoryId));
   }
 
   async getProductsBySupplier(supplierId: string): Promise<Product[]> {
-    return Array.from(this.products.values()).filter(
-      (product) => product.supplierId === supplierId
-    );
+    return await db.select().from(products).where(eq(products.supplierId, supplierId));
   }
 
   async getLowStockProducts(): Promise<Product[]> {
-    return Array.from(this.products.values()).filter(
-      (product) => product.quantity <= product.minStock
-    );
+    return await db.select().from(products).where(sql`${products.quantity} <= ${products.minStock}`);
   }
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const id = randomUUID();
-    const sku = this.generateSku();
-    const product: Product = {
-      ...insertProduct,
-      id,
-      sku,
-      createdAt: new Date().toISOString(),
-    };
-    this.products.set(id, product);
+    const skuCounter = await db.execute(sql`SELECT COUNT(*) as count FROM ${products}`);
+    const count = Number((skuCounter.rows[0] as any).count) + 1000;
+    const sku = `SKU-${count}`;
+    
+    const [product] = await db.insert(products).values({ ...insertProduct, sku }).returning();
 
-    if (product.quantity <= product.minStock) {
+    if (Number(product.quantity) <= Number(product.minStock)) {
       await this.createStockAlert({
-        productId: id,
-        alertType: product.quantity === 0 ? "out_of_stock" : "low_stock",
-        message: `${product.name} is ${product.quantity === 0 ? "out of stock" : "running low"}. Current stock: ${product.quantity}`,
+        productId: product.id,
+        alertType: Number(product.quantity) === 0 ? "out_of_stock" : "low_stock",
+        message: `${product.name} is ${Number(product.quantity) === 0 ? "out of stock" : "running low"}. Current stock: ${product.quantity}`,
         resolved: false,
       });
     }
@@ -315,77 +209,67 @@ export class MemStorage implements IStorage {
   }
 
   async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
-    const product = this.products.get(id);
-    if (!product) return undefined;
-    const updatedProduct = { ...product, ...updates };
-    this.products.set(id, updatedProduct);
-
-    if (updatedProduct.quantity <= updatedProduct.minStock) {
+    const [product] = await db.update(products).set(updates).where(eq(products.id, id)).returning();
+    
+    if (product && Number(product.quantity) <= Number(product.minStock)) {
       await this.createStockAlert({
         productId: id,
-        alertType: updatedProduct.quantity === 0 ? "out_of_stock" : "low_stock",
-        message: `${updatedProduct.name} is ${updatedProduct.quantity === 0 ? "out of stock" : "running low"}. Current stock: ${updatedProduct.quantity}`,
+        alertType: Number(product.quantity) === 0 ? "out_of_stock" : "low_stock",
+        message: `${product.name} is ${Number(product.quantity) === 0 ? "out of stock" : "running low"}. Current stock: ${product.quantity}`,
         resolved: false,
       });
     }
 
-    return updatedProduct;
+    return product || undefined;
   }
 
   async updateProductStock(id: string, quantity: number): Promise<Product | undefined> {
-    const product = this.products.get(id);
-    if (!product) return undefined;
     return this.updateProduct(id, { quantity });
   }
 
   async deleteProduct(id: string): Promise<boolean> {
-    return this.products.delete(id);
+    const result = await db.delete(products).where(eq(products.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  // Sale operations
   async getAllSales(): Promise<Sale[]> {
-    return Array.from(this.sales.values());
+    return await db.select().from(sales);
   }
 
   async getSale(id: string): Promise<Sale | undefined> {
-    return this.sales.get(id);
+    const [sale] = await db.select().from(sales).where(eq(sales.id, id));
+    return sale || undefined;
   }
 
   async getSalesByProduct(productId: string): Promise<Sale[]> {
-    return Array.from(this.sales.values()).filter(
-      (sale) => sale.productId === productId
-    );
+    return await db.select().from(sales).where(eq(sales.productId, productId));
   }
 
   async getSalesByUser(userId: string): Promise<Sale[]> {
-    return Array.from(this.sales.values()).filter(
-      (sale) => sale.userId === userId
-    );
+    return await db.select().from(sales).where(eq(sales.userId, userId));
   }
 
   async getSalesByDateRange(startDate: string, endDate: string): Promise<Sale[]> {
-    return Array.from(this.sales.values()).filter((sale) => {
-      const saleDate = new Date(sale.createdAt);
-      return saleDate >= new Date(startDate) && saleDate <= new Date(endDate);
-    });
+    return await db.select().from(sales).where(
+      and(
+        gte(sales.createdAt, new Date(startDate)),
+        lte(sales.createdAt, new Date(endDate))
+      )
+    );
   }
 
   async createSale(insertSale: InsertSale): Promise<Sale> {
-    const id = randomUUID();
-    const totalPrice = insertSale.quantity * insertSale.unitPrice;
-    const sale: Sale = {
-      ...insertSale,
-      id,
-      totalPrice,
-      createdAt: new Date().toISOString(),
-    };
-    this.sales.set(id, sale);
+    const totalPrice = Number(insertSale.quantity) * Number(insertSale.unitPrice);
+    const [sale] = await db.insert(sales).values({ 
+      ...insertSale, 
+      totalPrice: totalPrice.toString() 
+    }).returning();
 
     const product = await this.getProduct(insertSale.productId);
     if (product) {
       await this.updateProductStock(
         insertSale.productId,
-        product.quantity - insertSale.quantity
+        Number(product.quantity) - insertSale.quantity
       );
     }
 
@@ -393,52 +277,43 @@ export class MemStorage implements IStorage {
   }
 
   async deleteSale(id: string): Promise<boolean> {
-    return this.sales.delete(id);
+    const result = await db.delete(sales).where(eq(sales.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  // Purchase operations
   async getAllPurchases(): Promise<Purchase[]> {
-    return Array.from(this.purchases.values());
+    return await db.select().from(purchases);
   }
 
   async getPurchase(id: string): Promise<Purchase | undefined> {
-    return this.purchases.get(id);
+    const [purchase] = await db.select().from(purchases).where(eq(purchases.id, id));
+    return purchase || undefined;
   }
 
   async getPurchasesByProduct(productId: string): Promise<Purchase[]> {
-    return Array.from(this.purchases.values()).filter(
-      (purchase) => purchase.productId === productId
-    );
+    return await db.select().from(purchases).where(eq(purchases.productId, productId));
   }
 
   async getPurchasesBySupplier(supplierId: string): Promise<Purchase[]> {
-    return Array.from(this.purchases.values()).filter(
-      (purchase) => purchase.supplierId === supplierId
-    );
+    return await db.select().from(purchases).where(eq(purchases.supplierId, supplierId));
   }
 
   async getPurchasesByUser(userId: string): Promise<Purchase[]> {
-    return Array.from(this.purchases.values()).filter(
-      (purchase) => purchase.userId === userId
-    );
+    return await db.select().from(purchases).where(eq(purchases.userId, userId));
   }
 
   async createPurchase(insertPurchase: InsertPurchase): Promise<Purchase> {
-    const id = randomUUID();
-    const totalCost = insertPurchase.quantity * insertPurchase.unitCost;
-    const purchase: Purchase = {
-      ...insertPurchase,
-      id,
-      totalCost,
-      createdAt: new Date().toISOString(),
-    };
-    this.purchases.set(id, purchase);
+    const totalCost = Number(insertPurchase.quantity) * Number(insertPurchase.unitCost);
+    const [purchase] = await db.insert(purchases).values({ 
+      ...insertPurchase, 
+      totalCost: totalCost.toString() 
+    }).returning();
 
     const product = await this.getProduct(insertPurchase.productId);
     if (product) {
       await this.updateProductStock(
         insertPurchase.productId,
-        product.quantity + insertPurchase.quantity
+        Number(product.quantity) + insertPurchase.quantity
       );
     }
 
@@ -446,46 +321,37 @@ export class MemStorage implements IStorage {
   }
 
   async deletePurchase(id: string): Promise<boolean> {
-    return this.purchases.delete(id);
+    const result = await db.delete(purchases).where(eq(purchases.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  // Stock Alert operations
   async getAllStockAlerts(): Promise<StockAlert[]> {
-    return Array.from(this.stockAlerts.values());
+    return await db.select().from(stockAlerts);
   }
 
   async getActiveStockAlerts(): Promise<StockAlert[]> {
-    return Array.from(this.stockAlerts.values()).filter(
-      (alert) => !alert.resolved
-    );
+    return await db.select().from(stockAlerts).where(eq(stockAlerts.resolved, false));
   }
 
   async getStockAlert(id: string): Promise<StockAlert | undefined> {
-    return this.stockAlerts.get(id);
+    const [alert] = await db.select().from(stockAlerts).where(eq(stockAlerts.id, id));
+    return alert || undefined;
   }
 
   async createStockAlert(insertAlert: InsertStockAlert): Promise<StockAlert> {
-    const id = randomUUID();
-    const alert: StockAlert = {
-      ...insertAlert,
-      id,
-      createdAt: new Date().toISOString(),
-    };
-    this.stockAlerts.set(id, alert);
+    const [alert] = await db.insert(stockAlerts).values(insertAlert).returning();
     return alert;
   }
 
   async resolveStockAlert(id: string): Promise<StockAlert | undefined> {
-    const alert = this.stockAlerts.get(id);
-    if (!alert) return undefined;
-    const resolvedAlert = { ...alert, resolved: true };
-    this.stockAlerts.set(id, resolvedAlert);
-    return resolvedAlert;
+    const [alert] = await db.update(stockAlerts).set({ resolved: true }).where(eq(stockAlerts.id, id)).returning();
+    return alert || undefined;
   }
 
   async deleteStockAlert(id: string): Promise<boolean> {
-    return this.stockAlerts.delete(id);
+    const result = await db.delete(stockAlerts).where(eq(stockAlerts.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
