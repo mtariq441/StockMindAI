@@ -1,7 +1,9 @@
-import { pgTable, varchar, text, integer, decimal, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, integer, decimal, boolean, timestamp, pgSequence } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const skuSequence = pgSequence("sku_sequence", { startWith: 1000 });
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

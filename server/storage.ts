@@ -190,9 +190,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const skuCounter = await db.execute(sql`SELECT COUNT(*) as count FROM ${products}`);
-    const count = Number((skuCounter.rows[0] as any).count) + 1000;
-    const sku = `SKU-${count}`;
+    const skuResult = await db.execute(sql`SELECT nextval('sku_sequence') as sku_num`);
+    const skuNum = (skuResult.rows[0] as any).sku_num;
+    const sku = `SKU-${skuNum}`;
     
     const [product] = await db.insert(products).values({ ...insertProduct, sku }).returning();
 
@@ -259,21 +259,42 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSale(insertSale: InsertSale): Promise<Sale> {
-    const totalPrice = Number(insertSale.quantity) * Number(insertSale.unitPrice);
-    const [sale] = await db.insert(sales).values({ 
-      ...insertSale, 
-      totalPrice: totalPrice.toString() 
-    }).returning();
+    return await db.transaction(async (tx) => {
+      const [product] = await tx.select().from(products).where(eq(products.id, insertSale.productId));
+      
+      if (!product) {
+        throw new Error(`Product with id ${insertSale.productId} not found`);
+      }
 
-    const product = await this.getProduct(insertSale.productId);
-    if (product) {
-      await this.updateProductStock(
-        insertSale.productId,
-        Number(product.quantity) - insertSale.quantity
-      );
-    }
+      const newQuantity = Number(product.quantity) - insertSale.quantity;
+      if (newQuantity < 0) {
+        throw new Error(`Insufficient stock. Available: ${product.quantity}, Requested: ${insertSale.quantity}`);
+      }
 
-    return sale;
+      const totalPrice = Number(insertSale.quantity) * Number(insertSale.unitPrice);
+      
+      const [updatedProduct] = await tx
+        .update(products)
+        .set({ quantity: newQuantity })
+        .where(eq(products.id, insertSale.productId))
+        .returning();
+
+      const [sale] = await tx.insert(sales).values({ 
+        ...insertSale, 
+        totalPrice: totalPrice.toString() 
+      }).returning();
+
+      if (newQuantity <= Number(updatedProduct.minStock)) {
+        await tx.insert(stockAlerts).values({
+          productId: product.id,
+          alertType: newQuantity === 0 ? "out_of_stock" : "low_stock",
+          message: `${product.name} is ${newQuantity === 0 ? "out of stock" : "running low"}. Current stock: ${newQuantity}`,
+          resolved: false,
+        });
+      }
+
+      return sale;
+    });
   }
 
   async deleteSale(id: string): Promise<boolean> {
@@ -303,21 +324,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPurchase(insertPurchase: InsertPurchase): Promise<Purchase> {
-    const totalCost = Number(insertPurchase.quantity) * Number(insertPurchase.unitCost);
-    const [purchase] = await db.insert(purchases).values({ 
-      ...insertPurchase, 
-      totalCost: totalCost.toString() 
-    }).returning();
+    return await db.transaction(async (tx) => {
+      const [product] = await tx.select().from(products).where(eq(products.id, insertPurchase.productId));
+      
+      if (!product) {
+        throw new Error(`Product with id ${insertPurchase.productId} not found`);
+      }
 
-    const product = await this.getProduct(insertPurchase.productId);
-    if (product) {
-      await this.updateProductStock(
-        insertPurchase.productId,
-        Number(product.quantity) + insertPurchase.quantity
-      );
-    }
+      const newQuantity = Number(product.quantity) + insertPurchase.quantity;
+      const totalCost = Number(insertPurchase.quantity) * Number(insertPurchase.unitCost);
+      
+      await tx
+        .update(products)
+        .set({ quantity: newQuantity })
+        .where(eq(products.id, insertPurchase.productId));
 
-    return purchase;
+      const [purchase] = await tx.insert(purchases).values({ 
+        ...insertPurchase, 
+        totalCost: totalCost.toString() 
+      }).returning();
+
+      return purchase;
+    });
   }
 
   async deletePurchase(id: string): Promise<boolean> {
