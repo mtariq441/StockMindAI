@@ -426,6 +426,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== REPORTS ====================
+  
+  app.get("/api/reports/sales", authenticateToken, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'month';
+      const now = new Date();
+      let startDate: Date;
+      
+      switch(period) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'quarter':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      }
+      
+      const sales = await storage.getSalesByDateRange(startDate.toISOString(), now.toISOString());
+      const products = await storage.getAllProducts();
+      
+      const reportData = sales.map(sale => {
+        const product = products.find(p => p.id === sale.productId);
+        return {
+          ...sale,
+          productName: product?.name || 'Unknown',
+          productSku: product?.sku || 'N/A',
+        };
+      });
+      
+      const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.totalPrice), 0);
+      const totalQuantity = sales.reduce((sum, s) => sum + s.quantity, 0);
+      
+      res.json({
+        sales: reportData,
+        summary: {
+          totalRevenue,
+          totalQuantity,
+          averageOrderValue: sales.length > 0 ? totalRevenue / sales.length : 0,
+          totalOrders: sales.length,
+        },
+        period,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to generate sales report" });
+    }
+  });
+
+  app.get("/api/reports/inventory", authenticateToken, async (req, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      const categories = await storage.getAllCategories();
+      const suppliers = await storage.getAllSuppliers();
+      
+      const reportData = products.map(product => {
+        const category = categories.find(c => c.id === product.categoryId);
+        const supplier = suppliers.find(s => s.id === product.supplierId);
+        const stockValue = parseFloat(product.price) * product.quantity;
+        const costValue = parseFloat(product.cost) * product.quantity;
+        
+        return {
+          ...product,
+          categoryName: category?.name || 'Uncategorized',
+          supplierName: supplier?.name || 'Unknown',
+          stockValue,
+          costValue,
+          profit: stockValue - costValue,
+          stockStatus: product.quantity <= product.minStock ? 'Low Stock' : 'In Stock',
+        };
+      });
+      
+      const totalStockValue = reportData.reduce((sum, p) => sum + p.stockValue, 0);
+      const totalCostValue = reportData.reduce((sum, p) => sum + p.costValue, 0);
+      const lowStockItems = reportData.filter(p => p.quantity <= p.minStock).length;
+      
+      res.json({
+        inventory: reportData,
+        summary: {
+          totalProducts: products.length,
+          totalStockValue,
+          totalCostValue,
+          potentialProfit: totalStockValue - totalCostValue,
+          lowStockItems,
+        },
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to generate inventory report" });
+    }
+  });
+
+  app.get("/api/reports/forecast", authenticateToken, async (req, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      const sales = await storage.getAllSales();
+      
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const recentSales = await storage.getSalesByDateRange(thirtyDaysAgo.toISOString(), now.toISOString());
+      
+      const productSalesMap = new Map();
+      recentSales.forEach(sale => {
+        const current = productSalesMap.get(sale.productId) || { quantity: 0, revenue: 0 };
+        productSalesMap.set(sale.productId, {
+          quantity: current.quantity + sale.quantity,
+          revenue: current.revenue + parseFloat(sale.totalPrice),
+        });
+      });
+      
+      const forecastData = products.map(product => {
+        const salesData = productSalesMap.get(product.id) || { quantity: 0, revenue: 0 };
+        const dailyAverage = salesData.quantity / 30;
+        const weeklyForecast = Math.round(dailyAverage * 7);
+        const monthlyForecast = Math.round(dailyAverage * 30);
+        const daysUntilStockOut = product.quantity > 0 && dailyAverage > 0 
+          ? Math.floor(product.quantity / dailyAverage) 
+          : 999;
+        
+        return {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          currentStock: product.quantity,
+          minStock: product.minStock,
+          recentSales: salesData.quantity,
+          recentRevenue: salesData.revenue,
+          dailyAverage: Math.round(dailyAverage * 10) / 10,
+          weeklyForecast,
+          monthlyForecast,
+          daysUntilStockOut: daysUntilStockOut === 999 ? 'N/A' : daysUntilStockOut,
+          reorderRecommended: daysUntilStockOut < 14,
+        };
+      });
+      
+      res.json({
+        forecast: forecastData,
+        summary: {
+          totalProducts: products.length,
+          productsNeedingReorder: forecastData.filter(f => f.reorderRecommended).length,
+          avgDaysToStockOut: Math.round(forecastData.reduce((sum, f) => {
+            return sum + (typeof f.daysUntilStockOut === 'number' ? f.daysUntilStockOut : 0);
+          }, 0) / products.length),
+        },
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to generate forecast report" });
+    }
+  });
+
+  app.get("/api/reports/supplier", authenticateToken, async (req, res) => {
+    try {
+      const suppliers = await storage.getAllSuppliers();
+      const purchases = await storage.getAllPurchases();
+      const products = await storage.getAllProducts();
+      
+      const reportData = suppliers.map(supplier => {
+        const supplierPurchases = purchases.filter(p => p.supplierId === supplier.id);
+        const supplierProducts = products.filter(p => p.supplierId === supplier.id);
+        
+        const totalSpent = supplierPurchases.reduce((sum, p) => sum + parseFloat(p.totalCost), 0);
+        const totalQuantity = supplierPurchases.reduce((sum, p) => sum + p.quantity, 0);
+        const avgCost = supplierPurchases.length > 0 ? totalSpent / supplierPurchases.length : 0;
+        
+        return {
+          ...supplier,
+          totalOrders: supplierPurchases.length,
+          totalSpent,
+          totalQuantity,
+          avgOrderCost: avgCost,
+          productsSupplied: supplierProducts.length,
+          lastOrderDate: supplierPurchases.length > 0 
+            ? supplierPurchases.sort((a, b) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )[0].createdAt 
+            : null,
+        };
+      });
+      
+      const totalSpent = reportData.reduce((sum, s) => sum + s.totalSpent, 0);
+      
+      res.json({
+        suppliers: reportData,
+        summary: {
+          totalSuppliers: suppliers.length,
+          totalSpent,
+          avgSupplierSpend: suppliers.length > 0 ? totalSpent / suppliers.length : 0,
+        },
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to generate supplier report" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
