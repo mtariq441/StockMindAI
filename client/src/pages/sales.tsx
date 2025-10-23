@@ -169,8 +169,8 @@ export default function Sales() {
                       <td className="py-3 px-4 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
                       <td className="py-3 px-4 text-sm font-medium">{sale.product?.name || "Unknown"}</td>
                       <td className="py-3 px-4 text-sm text-right font-mono">{sale.quantity}</td>
-                      <td className="py-3 px-4 text-sm text-right font-mono">${sale.unitPrice.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-right font-mono">${sale.totalPrice.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right font-mono">${parseFloat(sale.unitPrice).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right font-mono">${parseFloat(sale.totalPrice).toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm">
                         <Badge variant="secondary">Completed</Badge>
                       </td>
@@ -205,7 +205,7 @@ export default function Sales() {
                 <SelectContent>
                   {products?.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
-                      {product.name} - ${product.price.toFixed(2)}
+                      {product.name} - ${parseFloat(product.price).toFixed(2)}
                     </SelectItem>
                   ))}
                 </SelectContent>
