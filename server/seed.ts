@@ -11,11 +11,11 @@ async function seed() {
     return;
   }
 
-  const hashedPassword = await bcrypt.hash("admin123", 10);
+  const hashedPassword = await bcrypt.hash("password123", 10);
   
   const [admin] = await db.insert(users).values({
-    username: "admin",
-    email: "admin@inventory.com",
+    username: "user",
+    email: "user@inventory.com",
     password: hashedPassword,
     role: "admin",
   }).returning();
